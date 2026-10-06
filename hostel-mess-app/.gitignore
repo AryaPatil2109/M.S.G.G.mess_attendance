@@ -1,0 +1,17 @@
+# passwords and keys (never upload)
+.env
+
+# data (never upload student data)
+hostel.db
+hostel.db.*
+backups/
+students.csv
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# frontend
+frontend/node_modules/
+frontend/dist/
