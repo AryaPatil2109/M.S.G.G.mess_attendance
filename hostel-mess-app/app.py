@@ -683,6 +683,18 @@ def spa(path=""):
     return spa_index()
 
 
+@app.route("/api/cron", methods=["GET", "POST"])
+def cron_trigger():
+    """Triggered by Vercel Cron or external ping to freeze meals passing cut-off."""
+    try:
+        conn = connect()
+        freeze_due_meals(conn)
+        conn.close()
+        return jsonify({"status": "ok", "message": "Meal freeze executed successfully"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 # ------------------------------------------------------------- scheduler ---
 def scheduler_loop():
     """Every minute: freeze counts that reached cut-off. Every hour: backup."""

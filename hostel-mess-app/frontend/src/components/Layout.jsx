@@ -36,7 +36,7 @@ export default function Layout({ title, subtitle, actions, children, wide }) {
   const items = [...NAV[user.role], { to: '/account', label: 'Account', icon: 'key' }]
 
   useEffect(() => {
-    document.title = `${title} · MessMate`
+    document.title = `${title} · M.S.G.G. Shikshan Sanstha, Kolhapur`
   }, [title])
 
   return (
@@ -45,8 +45,8 @@ export default function Layout({ title, subtitle, actions, children, wide }) {
         <div className="brand">
           <Logo size={38} />
           <div>
-            <b>MessMate</b>
-            <small>Hostel mess attendance</small>
+            <b style={{ fontSize: '13.5px', lineHeight: 1.2, display: 'block' }}>M.S.G.G. Shikshan Sanstha</b>
+            <small style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '10.5px' }}>Kolhapur · Hostel Mess</small>
           </div>
         </div>
         <nav className="nav">
@@ -92,10 +92,10 @@ export default function Layout({ title, subtitle, actions, children, wide }) {
         <footer className="site-footer">
           <div className="site-footer-inner">
             <div className="site-footer-brand">
-              <span>© {new Date().getFullYear()} <b>MessMate</b> · Hostel Mess Attendance</span>
+              <span>© {new Date().getFullYear()} <b>Lokare's Infotech</b> · Hostel Mess</span>
             </div>
             <div className="site-footer-credit">
-              <span>Developed &amp; Maintained by <b>Lokare's Infotech</b></span>
+              <span>Developed &amp; Maintained by <b>aryampatil21@gmail.com &amp; madhurashinde7777@gmail.com</b></span>
             </div>
           </div>
         </footer>

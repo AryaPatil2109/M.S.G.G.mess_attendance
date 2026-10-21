@@ -88,8 +88,8 @@ export default function Login() {
             <BuildingIcon />
           </div>
           <div style={styles.navBrandText}>
-            <span style={styles.navTitle}>Cedar House</span>
-            <span style={styles.navSub}>Hostel Management</span>
+            <span style={styles.navTitle}>M.S.G.G. Shikshan Sanstha</span>
+            <span style={styles.navSub}>Kolhapur · Hostel Management</span>
           </div>
         </div>
         <div style={styles.navTagline}>
@@ -106,7 +106,7 @@ export default function Login() {
           </div>
 
           <h1 style={styles.heading}>Welcome Back</h1>
-          <p style={styles.subheading}>Sign in to manage your hostel</p>
+          <p style={styles.subheading}>Sign in to M.S.G.G. Shikshan Sanstha Hostel Mess</p>
 
           {/* Error */}
           {error && (
@@ -182,7 +182,7 @@ export default function Login() {
 
       {/* Footer */}
       <footer style={styles.footer}>
-        <span>© {new Date().getFullYear()} MessMate · Hostel Mess Management</span>
+        <span>© {new Date().getFullYear()} <strong>M.S.G.G. Shikshan Sanstha · Kolhapur</strong> · Hostel Mess Management</span>
         <span style={styles.footerDivider}>•</span>
         <span>Developed &amp; Maintained by <strong style={{ color: '#fff', fontWeight: 600 }}>Lokare's Infotech</strong></span>
       </footer>
@@ -227,7 +227,10 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '14px 32px',
+    padding: '18px 48px',
+    background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)',
+    flexWrap: 'wrap',
+    gap: '12px',
   },
   navBrand: {
     display: 'flex',
@@ -269,60 +272,59 @@ const styles = {
   /* Main */
   main: {
     position: 'relative',
-    zIndex: 10,
+    zIndex: 1,
     flex: 1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '24px 16px 48px',
+    padding: '24px 16px 36px',
   },
-  /* Card */
   card: {
-    background: '#fff',
-    borderRadius: '20px',
-    padding: '40px 36px 36px',
     width: '100%',
     maxWidth: '440px',
+    background: '#ffffff',
+    borderRadius: '20px',
+    padding: '36px 36px 32px',
+    boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '0px',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.12)',
+    boxSizing: 'border-box',
   },
   iconWrap: {
-    width: '62px',
-    height: '62px',
+    width: '60px',
+    height: '60px',
     borderRadius: '16px',
     background: GREEN,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: '20px',
-    boxShadow: `0 4px 16px ${GREEN}55`,
+    marginBottom: '16px',
+    boxShadow: `0 8px 24px ${GREEN}44`,
   },
   heading: {
-    margin: '0 0 6px',
-    fontSize: '26px',
-    fontWeight: '700',
+    margin: '0 0 6px 0',
+    fontSize: '24px',
+    fontWeight: '800',
     color: '#1a1a2e',
-    letterSpacing: '-0.02em',
     textAlign: 'center',
+    letterSpacing: '-0.02em',
   },
   subheading: {
-    margin: '0 0 24px',
+    margin: '0 0 24px 0',
     fontSize: '14px',
-    color: '#666',
+    color: '#71717a',
     textAlign: 'center',
   },
   errorBox: {
     width: '100%',
+    padding: '10px 14px',
     background: '#fef2f2',
     border: '1px solid #fecaca',
     borderRadius: '10px',
-    padding: '10px 14px',
-    color: '#dc2626',
-    fontSize: '13.5px',
-    marginBottom: '16px',
+    color: '#b91c1c',
+    fontSize: '13px',
+    marginBottom: '18px',
     textAlign: 'center',
     boxSizing: 'border-box',
   },
@@ -330,13 +332,16 @@ const styles = {
   fieldGroup: {
     width: '100%',
     marginBottom: '18px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
   },
   fieldIconRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     marginBottom: '8px',
-    justifyContent: 'center',
+    color: '#27272a',
   },
   fieldIcon: {
     color: GREEN,
@@ -345,14 +350,14 @@ const styles = {
   },
   fieldLabel: {
     fontSize: '14px',
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#1f2937',
   },
   input: {
     width: '100%',
-    padding: '13px 16px',
+    padding: '14px 18px',
     background: '#eef4fb',
-    border: '2px solid transparent',
+    border: '1.5px solid transparent',
     borderRadius: '12px',
     fontSize: '15px',
     color: '#1a1a2e',

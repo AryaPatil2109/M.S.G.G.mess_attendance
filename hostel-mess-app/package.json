@@ -1,4 +1,10 @@
 {
+  "name": "hostel-mess-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2"
   }
