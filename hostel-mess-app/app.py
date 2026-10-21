@@ -738,12 +738,8 @@ def scheduler_loop():
         time.sleep(60)
 
 
-try:
-    init_db()
-except Exception as e:
-    app.logger.warning(f"Initial DB check deferred: {e}")
-
 if __name__ == "__main__":
+    init_db()
     threading.Thread(target=scheduler_loop, daemon=True).start()
     port = int(os.environ.get("PORT", "5000"))
     print(f"\n  MessMate backend running on http://localhost:{port}")
