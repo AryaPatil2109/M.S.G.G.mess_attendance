@@ -1,4 +1,30 @@
 /* ==========================================================================
+   Login page animations
+   ========================================================================== */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Login input focus highlight */
+#login-username:focus,
+#login-password:focus {
+  border-color: #1a7a4a !important;
+  background: #f0f9f4 !important;
+  box-shadow: 0 0 0 3px rgba(26,122,74,0.12);
+}
+
+/* Login submit button hover */
+#login-submit:hover:not(:disabled) {
+  background: #145f39 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(26,122,74,0.4) !important;
+}
+
+#login-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
    MessMate design system
    One brand colour + neutral greys. Green / red / amber are used ONLY for
    status (coming, skipping, out). Themes: green (default), blue, graphite, teal, indigo.
@@ -144,7 +170,7 @@ input, select, textarea, button { font: inherit; color: inherit; }
 .side-foot .icon-btn.on-dark { background: transparent; border-color: var(--side-line); color: var(--side-text); }
 .side-foot .icon-btn.on-dark:hover { background: var(--side-hover); color: var(--side-ink); }
 
-.main { flex: 1; margin-left: 248px; min-width: 0; }
+.main { flex: 1; margin-left: 248px; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
 .topbar {
   position: sticky; top: 0; z-index: 30;
   display: flex; align-items: center; gap: 16px;
@@ -164,10 +190,42 @@ input, select, textarea, button { font: inherit; color: inherit; }
   font-size: 13px; color: var(--muted); white-space: nowrap;
 }
 .clock b { color: var(--ink); font-weight: 600; }
-.content { padding: 28px 32px 48px; max-width: 1200px; display: flex; flex-direction: column; gap: 20px; }
+.content { flex: 1; padding: 28px 32px 48px; max-width: 1200px; display: flex; flex-direction: column; gap: 20px; }
 .content.wide { max-width: none; }
 .icon-btn.menu-btn { display: none; }
 .scrim { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 35; }
+
+/* ------------------------------------------------------------------ footer */
+.site-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  padding: 18px 32px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.site-footer-inner {
+  max-width: 1640px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.site-footer b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.site-footer-credit b {
+  color: var(--primary);
+  font-weight: 700;
+}
+@media (max-width: 960px) {
+  .site-footer { padding: 14px 20px; }
+}
+@media (max-width: 640px) {
+  .site-footer-inner { flex-direction: column; align-items: flex-start; gap: 6px; }
+}
 
 /* ---------------------------------------------------------------- buttons */
 .btn {

@@ -89,6 +89,16 @@ export default function Layout({ title, subtitle, actions, children, wide }) {
           </div>
         </header>
         <div className={`content ${wide ? 'wide' : ''}`}>{children}</div>
+        <footer className="site-footer">
+          <div className="site-footer-inner">
+            <div className="site-footer-brand">
+              <span>© {new Date().getFullYear()} <b>MessMate</b> · Hostel Mess Attendance</span>
+            </div>
+            <div className="site-footer-credit">
+              <span>Developed &amp; Maintained by <b>Lokare's Infotech</b></span>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
   )
