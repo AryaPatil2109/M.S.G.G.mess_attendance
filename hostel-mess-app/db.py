@@ -39,6 +39,8 @@ DB_HOST = os.environ.get("DB_HOST", "").strip()
 DB_SCHEMA = os.environ.get("DB_SCHEMA", "public").strip() or "public"
 USE_POSTGRES = bool(DATABASE_URL or DB_HOST)
 SQLITE_PATH = os.environ.get("HOSTEL_DB", os.path.join(BASE_DIR, "hostel.db"))
+if not os.access(os.path.dirname(SQLITE_PATH) or ".", os.W_OK):
+    SQLITE_PATH = os.path.join("/tmp", "hostel.db")
 
 TABLES = ["users", "presence", "gate_log", "meal_optout", "leaves", "final_counts", "settings"]
 TABLES_WITH_ID = ["users", "gate_log", "leaves"]
@@ -47,10 +49,9 @@ if USE_POSTGRES:
     try:
         import psycopg
         from psycopg.rows import dict_row
-    except ImportError as e:  # pragma: no cover
-        raise SystemExit(
-            "PostgreSQL is configured in .env but the driver is missing.\n"
-            "Run:  pip install -r requirements.txt") from e
+    except ImportError as e:
+        raise RuntimeError(
+            "PostgreSQL driver (psycopg) is missing. Ensure psycopg[binary] is in requirements.txt.") from e
     IntegrityError = (sqlite3.IntegrityError, psycopg.IntegrityError)
     OperationalError = (psycopg.OperationalError, psycopg.InterfaceError)
 else:

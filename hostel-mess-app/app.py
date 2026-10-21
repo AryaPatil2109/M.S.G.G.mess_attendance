@@ -326,17 +326,42 @@ def not_found(_e):
     return spa_index()
 
 
-# ------------------------------------------------------------------ auth ---
+@app.get("/api/health")
+def api_health():
+    try:
+        conn = connect()
+        cur = conn.execute("SELECT COUNT(*) AS n FROM users")
+        row = cur.fetchone()
+        conn.close()
+        return jsonify({
+            "status": "ok",
+            "database": database.describe(),
+            "users_count": row["n"] if row else 0
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "database": database.describe(),
+            "error": str(e)
+        }), 500
+
+
 @app.post("/api/login")
 def api_login():
-    b = body()
-    u = get_db().execute("SELECT * FROM users WHERE username=? AND active=1",
-                         (str(b.get("username", "")).strip().lower(),)).fetchone()
-    if not u or not check_password_hash(u["password_hash"], str(b.get("password", "")).strip()):
-        return err("Wrong username or password.", 401)
-    session.clear()
-    session.update(uid=u["id"], role=u["role"], name=u["name"])
-    return jsonify(user=user_json(u))
+    try:
+        b = body()
+        username = str(b.get("username", "")).strip().lower()
+        password = str(b.get("password", "")).strip()
+        u = get_db().execute("SELECT * FROM users WHERE username=? AND active=1",
+                             (username,)).fetchone()
+        if not u or not check_password_hash(u["password_hash"], password):
+            return err("Wrong username or password.", 401)
+        session.clear()
+        session.update(uid=u["id"], role=u["role"], name=u["name"])
+        return jsonify(user=user_json(u))
+    except Exception as e:
+        app.logger.exception("Login error:")
+        return err(f"Database error: {str(e)}", 500)
 
 
 @app.post("/api/logout")
@@ -713,7 +738,10 @@ def scheduler_loop():
         time.sleep(60)
 
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    app.logger.warning(f"Initial DB check deferred: {e}")
 
 if __name__ == "__main__":
     threading.Thread(target=scheduler_loop, daemon=True).start()
