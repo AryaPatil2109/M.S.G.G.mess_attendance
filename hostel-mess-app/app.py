@@ -79,8 +79,8 @@ def today_str():
 
 def add_user(conn, username, name, room, role, password, biometric_id=None, admission_date=None):
     cur = conn.execute(
-        "INSERT INTO users(username,name,room,role,password_hash,biometric_id,admission_date) "
-        "VALUES(?,?,?,?,?,?,?) RETURNING id",
+        "INSERT INTO users(username,name,room,role,password_hash,biometric_id,admission_date,active) "
+        "VALUES(?,?,?,?,?,?,?,1) RETURNING id",
         (username, name, room, role, generate_password_hash(password), biometric_id or None,
          admission_date or None))
     uid = cur.fetchone()["id"]
@@ -88,6 +88,23 @@ def add_user(conn, username, name, room, role, password, biometric_id=None, admi
         conn.execute("INSERT INTO presence(user_id,status,updated_at) VALUES(?,?,?)",
                      (uid, "IN", now_str()))
     return uid
+
+
+def append_student_csv(username, name, room, admission_date, biometric_id):
+    """Append a newly added student to students.csv so the file stays in sync with the database."""
+    path = STUDENTS_CSV
+    write_header = not os.path.exists(path) or os.path.getsize(path) == 0
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(["username", "name", "room", "admission_date", "biometric_id"])
+        writer.writerow([
+            username,
+            name,
+            room or "",
+            admission_date or "",
+            biometric_id or "",
+        ])
 
 
 def read_students_csv(path=None):
@@ -555,18 +572,25 @@ def api_rector_student_add():
     b = body()
     username = str(b.get("username", "")).strip().lower()
     name = str(b.get("name", "")).strip()
+    room = str(b.get("room", "")).strip()
+    admission_date = str(b.get("admission_date", "")).strip() or None
+    biometric_id = str(b.get("biometric_id", "")).strip() or None
     password = str(b.get("password", "")).strip() or "pass123"
     if not username or not name:
         return err("Username and full name are required.")
     db = get_db()
     try:
-        add_user(db, username, name, str(b.get("room", "")).strip(), "student", password,
-                 str(b.get("biometric_id", "")).strip() or None,
-                 str(b.get("admission_date", "")).strip() or None)
+        add_user(db, username, name, room, "student", password, biometric_id, admission_date)
         db.commit()
     except database.IntegrityError:
         db.rollback()
         return err("Username or biometric ID already exists.")
+    # Keep students.csv in sync with the database
+    try:
+        append_student_csv(username, name, room, admission_date, biometric_id)
+    except Exception as csv_err:
+        # CSV write failure must NOT undo the DB record — just log it
+        app.logger.warning("Could not append to students.csv: %s", csv_err)
     return jsonify(ok=True, message=f"Student {name} added.")
 
 
