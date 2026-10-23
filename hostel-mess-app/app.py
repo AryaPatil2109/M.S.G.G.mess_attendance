@@ -151,8 +151,9 @@ def is_locked(settings, day, meal):
 
 
 # ------------------------------------------------------------ core logic ---
-def meal_state(on_leave, home_now, opted_out):
-    if on_leave or home_now:
+def meal_state(on_leave, away_now, opted_out):
+    """away_now = student is OUT_DAY or HOME (physically not in hostel for meals)."""
+    if on_leave or away_now:
         return "leave"
     if opted_out:
         return "opted_out"
@@ -190,8 +191,9 @@ def compute_day(conn, day):
     for s in students:
         meals = {}
         for m in MEALS:
-            st = meal_state(s["id"] in on_leave, is_today and s["status"] == "HOME",
-                            (s["id"], m) in optout)
+            # OUT_DAY = went out, won't eat; HOME = gone home, won't eat
+            away = is_today and s["status"] in ("OUT_DAY", "HOME")
+            st = meal_state(s["id"] in on_leave, away, (s["id"], m) in optout)
             meals[m] = st
             summary[m][st] += 1
         rows.append({**dict(s), "meals": meals})
@@ -214,6 +216,22 @@ def freeze_due_meals(conn):
     conn.commit()
 
 
+def refreeze_today(conn):
+    """Recompute and overwrite today's frozen counts to reflect current presence.
+    Called whenever a student's status changes so the mess board stays accurate."""
+    settings = get_settings(conn)
+    day = today_str()
+    data = compute_day(conn, day)
+    for m in MEALS:
+        if not is_locked(settings, day, m):
+            continue   # not yet frozen — live count is already correct
+        conn.execute(
+            "INSERT INTO final_counts(day,meal,count,total,frozen_at) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(day,meal) DO UPDATE SET count=excluded.count, total=excluded.total, frozen_at=excluded.frozen_at",
+            (day, m, data["summary"][m]["coming"], data["total"], now_str()))
+    conn.commit()
+
+
 def meal_board(conn, day):
     freeze_due_meals(conn)
     settings = get_settings(conn)
@@ -223,13 +241,17 @@ def meal_board(conn, day):
     for m in MEALS:
         f = finals.get(m)
         live = data["summary"][m]["coming"]
+        locked = is_locked(settings, day, m)
         board.append({
             "meal": m,
             "cutoff": settings[f"cutoff_{m}"],
-            "locked": is_locked(settings, day, m),
+            "locked": locked,
             "live": live,
+            # Always show the live count — the frozen count is kept for history
+            # but the displayed number is always the real-time figure so that
+            # status changes (OUT_DAY / HOME) are reflected immediately.
             "final": f["count"] if f else None,
-            "show": f["count"] if f else live,
+            "show": live,
             "opted_out": data["summary"][m]["opted_out"],
             "leave": data["summary"][m]["leave"],
         })
@@ -258,6 +280,8 @@ def set_presence(conn, uid, action, source):
         conn.execute("UPDATE leaves SET to_day=? WHERE user_id=? AND from_day<? AND (to_day IS NULL OR to_day>=?)",
                      (yday, uid, day, day))
     conn.commit()
+    # Immediately update frozen counts so the mess board reflects the change
+    refreeze_today(conn)
 
 
 def punch(conn, uid, source):

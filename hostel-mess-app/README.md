@@ -14,22 +14,68 @@ without manual roll calls.
 | **Mess** | Kitchen display board with big live counts, auto-refresh, full-screen mode for a TV, CSV export |
 
 ### Counting rules
-- A student is counted unless she **skipped** that meal or is **on leave** (planned leave or “Going home”).
-- “Going out for the day” (college, market) does **not** cancel meals.
+- A student is counted for a meal unless she **skipped** that meal, is **on leave**, is **out for the day**,
+  or has **gone home**.
 - At each meal’s **cut-off time** (default: lunch 10:30, dinner 17:00) the meal is locked and the
   **final count is frozen** for the mess. Times are editable on the *Cut-off times* page.
+- Status changes (IN / Out for the day / Gone home) **immediately** update the frozen count so the
+  mess board always shows the correct live figure.
 
 ## Project structure
 ```
-app.py              Flask backend: JSON API under /api, serves the built React app
-backup.py           30-day rolling backup, list, restore
-reset_logins.py     Fixes login problems / resets demo passwords
-requirements.txt    Python packages
-frontend/           React app (Vite)
-  src/pages/        Login, Student, RectorDashboard, Students, Mess, History, Settings, Backups, Account
-  src/components/   Layout (sidebar + top bar), BarChart
-  src/ui.jsx        Buttons, cards, pills, modal, toasts, hooks
-  src/styles.css    Design system
+hostel-mess-app/
+│
+├── app.py                      # Flask backend — all /api/* routes, session auth
+├── db.py                       # Database layer (PostgreSQL via psycopg OR SQLite fallback)
+├── backup.py                   # 30-day rolling backup: create / list / restore
+│
+├── students.csv                # Real student list (not committed to GitHub)
+├── students.sample.csv         # Format reference for students.csv
+│
+├── import_students.py          # CLI: add/update students from students.csv
+├── migrate_to_postgres.py      # One-time SQLite → PostgreSQL migration
+├── reset_logins.py             # Reset demo/student passwords
+├── check_db.py                 # Verify database connection + list tables
+├── check_students.py           # Preview students.csv before importing
+│
+├── hostel.db                   # SQLite database (auto-created; used when no .env)
+├── backups/                    # Auto-created; stores .db / .json backup files
+│
+├── .env                        # DB credentials + secrets (never committed)
+├── .env.example                # Template for .env
+├── .gitignore
+├── requirements.txt            # Python dependencies (Flask, psycopg, Werkzeug)
+├── vercel.json                 # Vercel deployment config (optional)
+│
+└── frontend/                   # React app (Vite + JSX)
+    ├── index.html
+    ├── package.json
+    ├── vite.config.js
+    └── src/
+        ├── main.jsx            # App entry point
+        ├── App.jsx             # Root component — auth gate
+        ├── router.jsx          # Client-side routing (no React Router dep)
+        ├── api.js              # fetch() wrapper for all /api calls
+        ├── auth.jsx            # useAuth hook + AuthContext
+        ├── icons.jsx           # SVG icon library
+        ├── ui.jsx              # Shared UI: Button, Card, Modal, Toast, Ring, hooks
+        ├── theme.js            # Color tokens / theme helpers
+        ├── styles.css          # Full design system (variables, layout, components)
+        │
+        ├── components/
+        │   ├── Layout.jsx      # App shell: sidebar navigation + top bar
+        │   └── BarChart.jsx    # SVG bar chart (used on History page)
+        │
+        └── pages/
+            ├── Login.jsx           # Login screen (student / rector / mess)
+            ├── Student.jsx         # Student dashboard: meal plan, leave, gate toggle
+            ├── RectorDashboard.jsx # Rector: live KPIs, meal cards, student presence table
+            ├── Students.jsx        # Rector: add / deactivate / reset students
+            ├── Mess.jsx            # Kitchen display board (big counts, fullscreen)
+            ├── History.jsx         # Rector: 30-day meal history chart + gate log
+            ├── Settings.jsx        # Rector: edit cut-off times
+            ├── Backups.jsx         # Rector: backup list, download, manual trigger
+            └── Account.jsx         # Change password (all roles)
 ```
 
 ## Requirements
@@ -70,7 +116,7 @@ Open **http://localhost:5000**. Phones on the same Wi-Fi: `http://<laptop-IP>:50
 Demo accounts (created on first run):
 - Rector: `rector` / `rector123`
 - Mess: `mess` / `mess123`
-- Students: `s101` … `s110` / `pass123` (biometric IDs `FP101` … `FP110`)
+- Students: `s001` … `s029` / `pass123` (real names from `students.csv`)
 
 ## Database: PostgreSQL on Supabase
 The app uses PostgreSQL when the connection details are in a `.env` file, and falls back to the local
