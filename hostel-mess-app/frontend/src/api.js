@@ -17,6 +17,7 @@ async function request(method, url, data) {
   })
   let json = {}
   try {
+    
     json = await res.json()
   } catch {
     /* empty body */
