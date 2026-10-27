@@ -801,22 +801,64 @@ def api_rector_settings_save():
 @app.get("/api/rector/backups")
 @api_login_required("rector")
 def api_rector_backups():
-    return jsonify(files=backup.list_backups(BACKUP_DIR), keep=BACKUP_KEEP_DAYS, database=database.describe(),
+    files = backup.list_backups(BACKUP_DIR)
+    days = backup.list_backups_by_day(BACKUP_DIR)
+    return jsonify(files=files, days=days, keep=BACKUP_KEEP_DAYS, database=database.describe(),
                    folder=os.path.abspath(BACKUP_DIR))
 
 
 @app.post("/api/rector/backups")
 @api_login_required("rector")
 def api_rector_backup_now():
-    path = backup.make_backup(BACKUP_DIR, BACKUP_KEEP_DAYS)
-    return jsonify(ok=True, message=f"Backup saved: {os.path.basename(path)}")
+    res = backup.make_backup(BACKUP_DIR, BACKUP_KEEP_DAYS)
+    db_name = os.path.basename(res)
+    csv_dest = getattr(res, "csv_dest", "")
+    csv_name = os.path.basename(csv_dest) if csv_dest else f"hostel_students_30days_{date.today().isoformat()}.csv"
+    return jsonify(
+        ok=True,
+        message=f"Backup saved: {db_name} and {csv_name}",
+        file=db_name,
+        csv_file=csv_name,
+        csv_url=f"/api/rector/backups/{csv_name}"
+    )
+
+
+@app.get("/api/rector/backups/students-30days.csv")
+@api_login_required("rector")
+def api_rector_students_30days_csv():
+    day_str = request.args.get("day", date.today().isoformat())
+    try:
+        target_date = date.fromisoformat(day_str)
+    except ValueError:
+        target_date = date.today()
+    content = backup.generate_student_30day_csv(as_of_date=target_date)
+    filename = f"hostel_students_30days_{target_date.isoformat()}.csv"
+    return Response(
+        content,
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 @app.get("/api/rector/backups/<name>")
 @api_login_required("rector")
 def api_rector_backup_download(name):
-    if not backup.NAME_RE.fullmatch(name):
+    m = backup.NAME_RE.fullmatch(name)
+    if not m:
         return err("Not found", 404)
+    file_path = os.path.join(os.path.abspath(BACKUP_DIR), name)
+    if not os.path.exists(file_path):
+        if m.group(2) == "csv":
+            try:
+                target_date = date.fromisoformat(m.group(1))
+                content = backup.generate_student_30day_csv(as_of_date=target_date)
+                with open(file_path, "w", encoding="utf-8-sig", newline="") as f:
+                    f.write(content)
+            except Exception as e:
+                app.logger.warning("Could not auto-generate missing backup CSV: %s", e)
+                return err("CSV file not found", 404)
+        else:
+            return err("Not found", 404)
     return send_from_directory(os.path.abspath(BACKUP_DIR), name, as_attachment=True)
 
 
