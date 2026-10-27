@@ -29,10 +29,11 @@ for r in rows:
     if u and u["role"] != "student":
         print(f"  skipped {r['username']}: that username belongs to the {u['role']}")
         continue
+    act = 0 if str(r.get("active", "1")).strip().lower() in ("0", "false", "inactive", "left") else 1
     if u:
-        conn.execute("UPDATE users SET name=?, room=?, admission_date=?, biometric_id=?, active=1 WHERE id=?",
+        conn.execute("UPDATE users SET name=?, room=?, admission_date=?, biometric_id=?, active=? WHERE id=?",
                      (r["name"], r.get("room"), r.get("admission_date") or None,
-                      r.get("biometric_id") or None, u["id"]))
+                      r.get("biometric_id") or None, act, u["id"]))
         updated += 1
     else:
         A.add_user(conn, r["username"], r["name"], r.get("room"), "student", "pass123",

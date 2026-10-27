@@ -74,6 +74,17 @@ export default function Students() {
     if (ok) {
       setAdding(false)
       setForm(EMPTY)
+      // Automatically trigger download of updated students.csv for rector's records
+      try {
+        const a = document.createElement('a')
+        a.href = `/api/rector/students/export.csv?t=${Date.now()}`
+        a.download = 'students.csv'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      } catch (err) {
+        console.warn('Auto-download CSV failed:', err)
+      }
     }
   }
 
@@ -82,9 +93,14 @@ export default function Students() {
       title="Students"
       subtitle="Find, add or deactivate hostel students"
       actions={
-        <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
-          Add student
-        </Button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <a className="btn btn-default" href="/api/rector/students/export.csv" title="Download students.csv">
+            <Icon name="download" size={14} /> <span>Download CSV</span>
+          </a>
+          <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
+            Add student
+          </Button>
+        </div>
       }
     >
       <Card pad={false}>

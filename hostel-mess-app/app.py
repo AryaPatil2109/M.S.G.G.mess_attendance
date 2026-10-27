@@ -90,26 +90,98 @@ def add_user(conn, username, name, room, role, password, biometric_id=None, admi
     return uid
 
 
-def append_student_csv(username, name, room, admission_date, biometric_id):
-    """Append a newly added student to students.csv so the file stays in sync with the database."""
-    path = STUDENTS_CSV
-    write_header = not os.path.exists(path) or os.path.getsize(path) == 0
-    with open(path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        if write_header:
-            writer.writerow(["username", "name", "room", "admission_date", "biometric_id"])
-        writer.writerow([
-            username,
-            name,
-            room or "",
-            admission_date or "",
-            biometric_id or "",
-        ])
+def append_student_csv(username, name, room, admission_date, biometric_id, active=1):
+    """Append or update a student in students.csv so the file stays in sync with the database."""
+    target_paths = [STUDENTS_CSV]
+    # In serverless/read-only environments (like Vercel), also keep a copy in /tmp
+    parent_dir = os.path.dirname(STUDENTS_CSV) or "."
+    if not os.access(parent_dir, os.W_OK):
+        tmp_csv = os.path.join("/tmp", "students.csv")
+        if tmp_csv not in target_paths:
+            target_paths.append(tmp_csv)
+
+    act_val = 1 if active in (1, "1", True) else 0
+
+    for path in target_paths:
+        try:
+            rows = []
+            found = False
+            if os.path.exists(path) and os.path.getsize(path) > 0:
+                with open(path, "r", newline="", encoding="utf-8-sig") as f:
+                    reader = csv.reader(f)
+                    header = next(reader, None)
+                    if header:
+                        hdr = [h.strip() for h in header]
+                        if "active" not in [h.lower() for h in hdr]:
+                            hdr.append("active")
+                        rows.append(hdr)
+                        for r in reader:
+                            if len(r) >= 1 and r[0].strip().lower() == username.strip().lower():
+                                rows.append([username, name, room or "", admission_date or "", biometric_id or "", act_val])
+                                found = True
+                            else:
+                                if len(r) == 5:
+                                    r = list(r) + [1]
+                                rows.append(r)
+            if not rows:
+                rows.append(["username", "name", "room", "admission_date", "biometric_id", "active"])
+            if not found:
+                rows.append([username, name, room or "", admission_date or "", biometric_id or "", act_val])
+
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+        except Exception as e:
+            app.logger.warning("Could not append to CSV at %s: %s", path, e)
+
+
+def update_student_csv_status(username, active):
+    """Update active status of a student in students.csv."""
+    target_paths = [STUDENTS_CSV]
+    parent_dir = os.path.dirname(STUDENTS_CSV) or "."
+    if not os.access(parent_dir, os.W_OK):
+        tmp_csv = os.path.join("/tmp", "students.csv")
+        if tmp_csv not in target_paths:
+            target_paths.append(tmp_csv)
+
+    act_val = 1 if active in (1, "1", True) else 0
+
+    for path in target_paths:
+        if not os.path.exists(path) or os.path.getsize(path) == 0:
+            continue
+        try:
+            rows = []
+            with open(path, "r", newline="", encoding="utf-8-sig") as f:
+                reader = csv.reader(f)
+                header = next(reader, None)
+                if not header:
+                    continue
+                hdr = [h.strip() for h in header]
+                if "active" not in [h.lower() for h in hdr]:
+                    hdr.append("active")
+                rows.append(hdr)
+                for r in reader:
+                    if len(r) >= 1 and r[0].strip().lower() == username.strip().lower():
+                        base = list(r[:5])
+                        while len(base) < 5:
+                            base.append("")
+                        base.append(act_val)
+                        rows.append(base)
+                    else:
+                        if len(r) == 5:
+                            r = list(r) + [1]
+                        rows.append(r)
+
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+        except Exception as e:
+            app.logger.warning("Could not update status in CSV at %s: %s", path, e)
 
 
 def read_students_csv(path=None):
     """Reads the real student list (students.csv). Columns:
-    username, name, room, admission_date (YYYY-MM-DD), biometric_id (optional)."""
+    username, name, room, admission_date (YYYY-MM-DD), biometric_id (optional), active (optional)."""
     path = path or STUDENTS_CSV
     if not os.path.exists(path):
         return []
@@ -119,6 +191,8 @@ def read_students_csv(path=None):
             r = {(k or "").strip().lower(): (v or "").strip() for k, v in r.items()}
             if r.get("username") and r.get("name"):
                 r["username"] = r["username"].lower()
+                raw_act = r.get("active", "1")
+                r["active"] = 0 if str(raw_act).strip().lower() in ("0", "false", "inactive", "left") else 1
                 rows.append(r)
         return rows
 
@@ -585,21 +659,62 @@ def api_rector_student_add():
     except database.IntegrityError:
         db.rollback()
         return err("Username or biometric ID already exists.")
+
+    # Also mirror to local SQLite file (hostel.db) if it exists
+    if database.USE_POSTGRES and os.path.exists(database.SQLITE_PATH):
+        try:
+            import sqlite3
+            raw_sq = sqlite3.connect(database.SQLITE_PATH, timeout=5)
+            raw_sq.row_factory = sqlite3.Row
+            raw_sq.execute("PRAGMA foreign_keys=ON")
+            sq_conn = database.Conn(raw_sq, False)
+            add_user(sq_conn, username, name, room, "student", password, biometric_id, admission_date)
+            sq_conn.commit()
+            sq_conn.close()
+        except Exception as sq_err:
+            app.logger.warning("Could not mirror student to local SQLite: %s", sq_err)
+
     # Keep students.csv in sync with the database
     try:
         append_student_csv(username, name, room, admission_date, biometric_id)
     except Exception as csv_err:
         # CSV write failure must NOT undo the DB record — just log it
         app.logger.warning("Could not append to students.csv: %s", csv_err)
-    return jsonify(ok=True, message=f"Student {name} added.")
+    return jsonify(
+        ok=True,
+        message=f"Student {name} added.",
+        student={"username": username, "name": name, "room": room, "admission_date": admission_date, "biometric_id": biometric_id}
+    )
 
 
 @app.post("/api/rector/students/<int:uid>/toggle")
 @api_login_required("rector")
 def api_rector_student_toggle(uid):
     db = get_db()
-    db.execute("UPDATE users SET active=1-active WHERE id=? AND role='student'", (uid,))
+    st = db.execute("SELECT id, username, active FROM users WHERE id=? AND role='student'", (uid,)).fetchone()
+    if not st:
+        return err("Student not found", 404)
+    new_active = 1 - st["active"]
+    db.execute("UPDATE users SET active=? WHERE id=?", (new_active, uid))
     db.commit()
+
+    # Mirror to local SQLite if using Postgres
+    if database.USE_POSTGRES and os.path.exists(database.SQLITE_PATH):
+        try:
+            import sqlite3
+            raw_sq = sqlite3.connect(database.SQLITE_PATH, timeout=5)
+            raw_sq.execute("UPDATE users SET active=? WHERE username=?", (new_active, st["username"]))
+            raw_sq.commit()
+            raw_sq.close()
+        except Exception as sq_err:
+            app.logger.warning("Could not mirror toggle to SQLite: %s", sq_err)
+
+    # Keep students.csv in sync with new status
+    try:
+        update_student_csv_status(st["username"], new_active)
+    except Exception as csv_err:
+        app.logger.warning("Could not update students.csv active status: %s", csv_err)
+
     return jsonify(ok=True)
 
 
@@ -626,6 +741,25 @@ def api_rector_history():
                         FROM gate_log g JOIN users u ON u.id=g.user_id
                         WHERE g.ts>=? ORDER BY g.ts DESC LIMIT 500""", (since,)).fetchall()
     return jsonify(days=list(by_day.values()), log=[dict(r) for r in log])
+
+
+@app.get("/api/rector/students/export.csv")
+@api_login_required("rector")
+def api_rector_students_export_csv():
+    rows = get_db().execute(
+        """SELECT username, name, room, admission_date, biometric_id, active 
+           FROM users 
+           WHERE role='student' 
+           ORDER BY username"""
+    ).fetchall()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["username", "name", "room", "admission_date", "biometric_id", "active"])
+    for r in rows:
+        w.writerow([r["username"], r["name"], r["room"] or "", r["admission_date"] or "", r["biometric_id"] or "",
+                    1 if r["active"] in (1, "1", True) else 0])
+    return Response(buf.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=students.csv"})
 
 
 @app.get("/api/export.csv")
